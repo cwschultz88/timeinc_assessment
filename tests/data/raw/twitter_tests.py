@@ -1,4 +1,4 @@
-from src.data.twitter.raw_data import iget_json_data_entry
+from src.data.raw.twitter import iget_json_data_entry
 import unittest
 
 class TwitterRawDataTests(unittest.TestCase):
