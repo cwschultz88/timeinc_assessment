@@ -8,5 +8,5 @@ Assumes all python scripts are called from the root of the repo, i.e. this direc
 
 To run unit tests, make sure to use -m unittest flag with the python interpreter. For example:
 ```
-python -m unittest tests.data.twitter.TwitterRawDataTests
+python -m unittest tests.data.twitter.raw_data_tests
 ```
