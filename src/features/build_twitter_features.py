@@ -11,7 +11,6 @@ import src.data.raw.twitter as raw_twitter_data
 # Cached Info
 brands_twitter_info_table = {}
 
-
 def extract_brand(twitter_json_object):
     '''
     Given a twitter json obect, extracts the associated Time Inc brand. Return empty string if cannot find the brand
@@ -36,7 +35,7 @@ def extract_brand(twitter_json_object):
                 # cache results
                 brands_twitter_info_table[split_line[0]] = (split_line[1].strip(), split_line[2].strip())
 
-    # First Approach - Check for Brand in Entities User Mentions Part of Tweet
+    # First Approach - Check for Brand in Entities User Mentions
     user_mentions_data = twitter_json_object['entities']['user_mentions']
     for user_mention in user_mentions_data:
         if 'name' in user_mention:
@@ -54,19 +53,12 @@ def extract_brand(twitter_json_object):
             urls_to_check_for_brand.append(url_data["expanded_url"])
     # Check for brand references
     for url_to_check in urls_to_check_for_brand:
-        '''
-        re_url_to_check = re.compile(url_to_check)
-        for brand in brands_twitter_info_table:
-            brand_url_hint = brands_twitter_info_table[brand][1]
-            if re_url_to_check.match(brand_url_hint):
-                return brand
-        '''
         for brand in brands_twitter_info_table:
             brand_url_hint = brands_twitter_info_table[brand][1]
             if brand_url_hint in url_to_check:
                 return brand
 
-    # Final Approach - search raw string for brand url hints and company names, very consuming!
+    # Final Approach - search raw string for brand url, companye names, etc. brute force search!
     json_text = json.dumps(twitter_json_object)
     for brand in brands_twitter_info_table:
             brand_url_hint = brands_twitter_info_table[brand][1].strip()
