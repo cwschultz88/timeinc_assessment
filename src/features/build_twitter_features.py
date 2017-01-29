@@ -58,7 +58,7 @@ def extract_brand(twitter_json_object):
             if brand_url_hint in url_to_check:
                 return brand
 
-    # Final Approach - search raw string for brand url, companye names, etc. brute force search!
+    # Final Approach - search raw string for brand url, company names, etc. brute force search!
     json_text = json.dumps(twitter_json_object)
     for brand in brands_twitter_info_table:
             brand_url_hint = brands_twitter_info_table[brand][1].strip()
@@ -71,24 +71,82 @@ def extract_brand(twitter_json_object):
             if brand in json_text:
                 return brand
 
+    # Nothing found, return empty string
     return ""
+
 
 def build_features():
     '''
     Builds feautures needed to cluster twitter users togeher
 
     Currently, given a twitter json object, extracts:
-       twitter userid -
-       followers count -
-       likes count -
-       tweets count -
-       time active -
+       userid
+       screen name
+       name
+       total tweets
+       friends count
+       followers count
+       likes
        Time Inc Brands Twitted About - each being a binary feature with 1 being talked about Brand
 
     Stores results in data/processed/twitter_data_features.csv
     '''
+    # Stores all features for each userid in the raw twitter data, format {userid:{features:values}}
+    twitter_data_extracted_features = {}
+
+    # Cycle through Raw Twitter JSON data
     for twitter_json_object in raw_twitter_data.iget_json_data_entry():
-        brand = extract_brand(twitter_json_object)
+        # Find mentioned brand in tweet first because skip this tweet if cannot find a Time Inc. Brand
+        # use seperate function to extract brand due to the complexity / wanting to unit test it seperately
+        metioned_brand = extract_brand(twitter_json_object)
+        if not metioned_brand:
+            continue
+
+        # set up memory space to store extracted features
+        userid = twitter_json_object['user']['id']
+        if userid in twitter_data_extracted_features:
+            features_set = twitter_data_extracted_features[userid]
+        else:
+            features_set = {}
+            twitter_data_extracted_features[userid] = features_set
+
+            features_set["screen name"] = twitter_json_object['user']["screen_name"]
+            features_set["name"] = twitter_json_object['user']["name"]
+
+        # get user features such as total tweets, etc. Store only the best results
+        features_set["total tweets count"] = max(twitter_json_object['user']["statuses_count"], features_set.get("total tweets count", 0))
+        features_set["friends count"] = max(twitter_json_object['user']["friends_count"], features_set.get("friends count", 0))
+        features_set["followers count"] = max(twitter_json_object['user']["followers_count"], features_set.get("followers count", 0))
+        features_set["likes"] = max(twitter_json_object['user']["favourites_count"], features_set.get("likes", 0))
+
+        # create binary brand has been metioned by user features if not already present in features_set
+        if metioned_brand not in features_set:
+            for brand in brands_twitter_info_table:
+                features_set[brand] = 0
+        features_set[metioned_brand] = 1
+
+    # save results
+    header_added = False
+    brands_list = brands_twitter_info_table.keys() # create list so ordering of brands is consistent
+    with open("data/processed/twitter_data_features.csv", 'w') as twitter_data_features_file:
+        # create header
+        twitter_data_features_file.write("userid,screen name,name,total tweets count,frends count,followers count")
+        for brand in brands_list:
+            twitter_data_features_file.write("," + brand)
+
+        # add data
+        for userid, features in twitter_data_extracted_features.iteritems():
+            twitter_data_features_file.write('\n' + str(userid))
+
+            twitter_data_features_file.write(',' + str(features["screen name"]))
+            twitter_data_features_file.write(',' + str(features["name"].replace(',', '').encode('utf8')))
+            twitter_data_features_file.write(',' + str(features["total tweets count"]))
+            twitter_data_features_file.write(',' + str(features["friends count"]))
+            twitter_data_features_file.write(',' + str(features["followers count"]))
+            twitter_data_features_file.write(',' + str(features["likes"]))
+
+            for brand in brands_list:
+                twitter_data_features_file.write(',' + str(features[brand]))
 
 
 if __name__ == '__main__':
