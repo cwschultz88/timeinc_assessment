@@ -1,5 +1,6 @@
 import csv
 import numpy as np
+import pickle
 import random
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.mixture import GaussianMixture
@@ -21,6 +22,24 @@ def _get_twitter_features():
             user_info.append([feature_str for feature_str in data_line[:3]])
 
         return user_info, features_set, features_header
+
+def _print_out_feature_characteristics_of_cluster(features_set, features_header, labels):
+    '''
+    Prints out a listing of characteristics of features in each cluster
+    '''
+    number_of_unqiue_labels = len(set(labels.tolist()))
+    sorted_features_by_label = {i: [] for i in xrange(number_of_unqiue_labels)}
+
+    for features, label in zip(features_set, labels):
+        sorted_features_by_label[label].append(features)
+    cluster_feature_means = [np.array(sorted_features_by_label[i]).mean(0).tolist() for i in xrange(number_of_unqiue_labels)]
+    print "Average Feature Value by Clusters: "
+    for i, feature_name in enumerate(features_header):
+        str_clusters_feature_average_value = ""
+        for j in xrange(number_of_unqiue_labels):
+            str_clusters_feature_average_value += str(cluster_feature_means[j][i]) + "  "
+        print "  --" + feature_name + " - " + str_clusters_feature_average_value
+    print ""
 
 def compare_models():
     '''
@@ -61,19 +80,9 @@ def compare_models():
         for i in xrange(number_of_unqiue_labels):
             print "  -- Cluster " + str(i + 1) + ": " + str(labels.tolist().count(i))
 
-        sorted_features_by_label = {i: [] for i in xrange(number_of_unqiue_labels)}
-        for features, label in zip(features_set, labels):
-            sorted_features_by_label[label].append(features)
-        cluster_feature_means = [np.array(sorted_features_by_label[i]).mean(0).tolist() for i in xrange(number_of_unqiue_labels)]
-        print "Average Feature Value by Clusters: "
-        for i, feature_name in enumerate(features_header):
-            str_clusters_feature_average_value = ""
-            for j in xrange(number_of_unqiue_labels):
-                str_clusters_feature_average_value += str(cluster_feature_means[j][i]) + "  "
-            print "  --" + feature_name + " - " + str_clusters_feature_average_value
-        print ""
+        _print_out_feature_characteristics_of_cluster(features_set, features_header, labels)
 
-def train_final_model(assign_labels_to_twitter_users=True):
+def train_final_model():
     '''
     trains final model using k-means algorithm
 
@@ -82,9 +91,6 @@ def train_final_model(assign_labels_to_twitter_users=True):
     Prunes out small clusters then and does a final labeling of all the twitter data
 
     Prints out characteristics qualities
-
-    If assign_labels_to_twitter_users is True, assigns cluster labels to
-    all twitter users in twitter features files
     '''
     # get twitter data
     user_info, features_set, features_header = _get_twitter_features()
@@ -130,20 +136,17 @@ def train_final_model(assign_labels_to_twitter_users=True):
         print "  -- cluster " + str(i + 1) + ": " + str(pruned_labels.tolist().count(i))
 
     # get feature averages with each cluster to assign meaningful labels
-    # note - i know this is a copy and paste of code above instead of creating a function to share - just doing this for now to save time
-    sorted_features_by_label = {i: [] for i in xrange(number_of_unqiue_labels)}
-    for features, label in zip(features_set, pruned_labels):
-        sorted_features_by_label[label].append(features)
-    cluster_feature_means = [np.array(sorted_features_by_label[i]).mean(0).tolist() for i in xrange(number_of_unqiue_labels)]
-    print "Average Feature Value by Clusters: "
-    for i, feature_name in enumerate(features_header):
-        str_clusters_feature_average_value = ""
-        for j in xrange(number_of_unqiue_labels):
-            str_clusters_feature_average_value += str(cluster_feature_means[j][i]) + "  "
-        print "  --" + feature_name + " - " + str_clusters_feature_average_value
-    print ""
+    _print_out_feature_characteristics_of_cluster(features_set, features_header, pruned_labels)
 
+    # save model
+    with open("models/twitter_clustering_model.p", "wb") as model_file:
+        model_file.write(pickle.dumps(model))
 
+    # save twitter user cluster labels
+    with open("data/processed/twitter_user_cluster_labels.csv", 'w') as twitter_user_cluster_file:
+        twitter_user_cluster_file.write("Twitter Userid,Cluster Label\n")
+        for user, label in zip(user_info, pruned_labels):
+            twitter_user_cluster_file.write(str(user[0] + ',' + str(label) + '\n'))
 
 if __name__ == '__main__':
     train_final_model()
