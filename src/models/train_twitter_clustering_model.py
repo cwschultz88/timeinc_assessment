@@ -90,6 +90,7 @@ def train_final_model(assign_labels_to_twitter_users=True):
     user_info, features_set, features_header = _get_twitter_features()
 
     # increase number of clusters in k means until found at leasst 4 clusters with 1000 members
+    "KMeans Model Fitting"
     k = 15
     while True:
         model = KMeans(k)
@@ -109,8 +110,10 @@ def train_final_model(assign_labels_to_twitter_users=True):
             return
 
         k += 1
+    print "KMeans Model Fitting Complete - k=" + str(k)
 
     # prune out clusters with less than 1000 members
+    print "Pruning out clusters with less than 1000 members"
     model_labels = model.labels_
     pruned_centers = []
     for i,center in enumerate(model.cluster_centers_):
@@ -120,12 +123,25 @@ def train_final_model(assign_labels_to_twitter_users=True):
 
     # get new labels
     pruned_labels = model.predict(features_set)
-    print len(set(pruned_labels.tolist()))
+    number_of_unqiue_labels = len(set(pruned_labels.tolist()))
+    print "Pruned downed to " + str(number_of_unqiue_labels) + " clusters"
+    print "Cluster member counts: "
+    for i in xrange(number_of_unqiue_labels):
+        print "  -- cluster " + str(i + 1) + ": " + str(pruned_labels.tolist().count(i))
 
-
-
-
-
+    # get feature averages with each cluster to assign meaningful labels
+    # note - i know this is a copy and paste of code above instead of creating a function to share - just doing this for now to save time
+    sorted_features_by_label = {i: [] for i in xrange(number_of_unqiue_labels)}
+    for features, label in zip(features_set, pruned_labels):
+        sorted_features_by_label[label].append(features)
+    cluster_feature_means = [np.array(sorted_features_by_label[i]).mean(0).tolist() for i in xrange(number_of_unqiue_labels)]
+    print "Average Feature Value by Clusters: "
+    for i, feature_name in enumerate(features_header):
+        str_clusters_feature_average_value = ""
+        for j in xrange(number_of_unqiue_labels):
+            str_clusters_feature_average_value += str(cluster_feature_means[j][i]) + "  "
+        print "  --" + feature_name + " - " + str_clusters_feature_average_value
+    print ""
 
 
 
