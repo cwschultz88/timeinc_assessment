@@ -6,6 +6,7 @@ import random
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.mixture import GaussianMixture
 from sklearn.metrics import silhouette_score
+from sklearn.preprocessing import StandardScaler
 import time
 
 def _get_twitter_features():
@@ -83,7 +84,7 @@ def compare_models():
 
         _print_out_feature_characteristics_of_cluster(features_set, features_header, labels)
 
-def train_final_model(k=125, prune_down_to=4):
+def train_final_model(k=100, prune_down_to=4):
     '''
     trains final model using k-means algorithm
 
@@ -95,6 +96,13 @@ def train_final_model(k=125, prune_down_to=4):
     '''
     # get twitter data
     user_info, features_set, features_header = _get_twitter_features()
+
+    '''
+    # normalize features
+    # Experiment - Shifts clustering to brands rather than profile descriptive info
+    normalized_features_set = StandardScaler().fit_transform(features_set)
+    print normalized_features_set
+    '''
 
     print "KMeans Model Fitting with k=" + str(k)
     model = KMeans(k)
