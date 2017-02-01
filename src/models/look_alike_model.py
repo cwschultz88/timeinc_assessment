@@ -1,8 +1,18 @@
-import random
+import numpy as np
+import os
+import pandas as pd
 import pickle
+import random
+import re
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
+import sys
+
+# Hack solution for import error associated with next import - don't have time to fix it though properly
+sys.path.insert(0, os.path.abspath(os.getcwd()))
+
+import src.data.raw.clickstream as clickstream_data
 
 def train_social_clustering_label_models(cluster_labels=set(['0','1','2','3'])):
     '''
@@ -58,6 +68,53 @@ def train_social_clustering_label_models(cluster_labels=set(['0','1','2','3'])):
         with open("models/look_alike_social_labeling_models/social_label_" + social_cluster_label +'.p', 'wb') as model_save_file:
             model_save_file.write(pickle.dumps(social_label_model))
         print ""
+
+ 
+def predict_probabilities_of_social_labels(clickstream_part0_filename="/media/chris/EE06AB7406AB3C89/Documents and Settings/Chris/Downloads/UserSessions_2016_11_15_part0.csv", 
+                                           clickstream_part1_filename="/media/chris/EE06AB7406AB3C89/Documents and Settings/Chris/Downloads/UserSessions_2016_11_15_part1.csv", 
+                                           downsample_clickstream_to=100000):
+    '''
+    Predicts the probabilities of all clickstream data using traing social label prediction models
+
+    saves results in:
+        data/processed/clickstream_social_label_predictions.csv
+    '''
+    # load models
+    social_labeling_model_files_directory_contents = os.listdir("models/look_alike_social_labeling_models")
+    model_filenames = [filename for filename in social_labeling_model_files_directory_contents if '.p' in filename]
+    social_labels = set()
+    if len(model_filenames) < 1:
+        print "No Model Files Found - run train_social_clustering_label_models() in this module first"
+        return
+    social_labeling_models = {}
+    for model_filename in model_filenames:
+        associated_social_label = model_filename.split('_')[2][:-2]
+        with open("models/look_alike_social_labeling_models/" + model_filename, 'rb') as model_file:
+            social_labeling_models[associated_social_label] = pickle.load(model_file)    
+            social_labels.add(associated_social_label)
+
+    #select rows to load from clickstream_data
+    number_of_clickstream_entries = sum(1 for line in open(clickstream_part0_filename)) #number of records in file
+    skip = sorted(random.sample(xrange(0,number_of_clickstream_entries),number_of_clickstream_entries-downsample_clickstream_to))
     
+    df_part0 = pd.read_csv(clickstream_part0_filename, skiprows=skip, header=None)
+    df_part1 = pd.read_csv(clickstream_part1_filename, skiprows=skip, header=None)
+    df_combined = pd.merge(df_part0, df_part1, on=0, how='inner')
+    del df_part0
+    del df_part1
+    
+    features = df_combined.ix[:,1:].as_matrix()
+    clickstream_userids = df_combined.ix[:,0:1].as_matrix()
+    del df_combined
+
+    results_df_header = ['clickstream_userid']
+    results = clickstream_userids
+    for social_label, social_label_model in social_labeling_models.iteritems():
+        results_df_header.append('social_label_' + social_label)
+        results = np.append(results, social_label_model.predict_proba(features)[:,1:], 1)
+
+    df_results = pd.DataFrame(data=results,index=results[:,0],columns=results_df_header)
+    df_results.to_csv('data/processed/clickstream_social_label_predictions.csv')
+
 if __name__ == '__main__':
-    train_social_clustering_label_models()
+    predict_probabilities_of_social_labels()
