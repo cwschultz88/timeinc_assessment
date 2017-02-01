@@ -1,6 +1,7 @@
 import csv
 import numpy as np
 import pickle
+from operator import itemgetter
 import random
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.mixture import GaussianMixture
@@ -82,55 +83,39 @@ def compare_models():
 
         _print_out_feature_characteristics_of_cluster(features_set, features_header, labels)
 
-def train_final_model():
+def train_final_model(k=125, prune_down_to=4):
     '''
     trains final model using k-means algorithm
 
-    Increases clusters until at least 4 clusters are found with 1000 members
-
-    Prunes out small clusters then and does a final labeling of all the twitter data
+    Prunes Down to 4 clusters
 
     Prints out characteristics qualities
+
+    ToDo: If time, implement https://elki-project.github.io/tutorial/same-size_k_means
     '''
     # get twitter data
     user_info, features_set, features_header = _get_twitter_features()
 
-    # increase number of clusters in k means until found at leasst 4 clusters with 1000 members
-    "KMeans Model Fitting"
-    k = 15
-    while True:
-        model = KMeans(k)
-        unpruned_labels = model.fit_predict(features_set)
-        number_of_unqiue_labels = len(set(unpruned_labels.tolist()))
-        counts_of_each_label = [unpruned_labels.tolist().count(i) for i in xrange(number_of_unqiue_labels)]
+    print "KMeans Model Fitting with k=" + str(k)
+    model = KMeans(k)
+    unpruned_labels = model.fit_predict(features_set)
+    number_of_unqiue_labels = len(set(unpruned_labels.tolist()))
+    counts_of_each_label = [unpruned_labels.tolist().count(i) for i in xrange(number_of_unqiue_labels)]
+    counts_and_index_of_each_label = [(i, count) for i, count in enumerate(counts_of_each_label)]
+    sorted_counts_and_index_of_each_label = sorted(counts_and_index_of_each_label, key=itemgetter(1), reverse=True)
 
-        number_of_clusters_with_1000_members = 0
-        for label_count in counts_of_each_label:
-            if label_count >= 1000:
-                number_of_clusters_with_1000_members += 1
-        if number_of_clusters_with_1000_members >= 4:
-            break
-
-        if k == 100:
-            print "**** FAILED -- no k <= 100 yielded 4 clusters of at least 1000 members ****"
-            return
-
-        k += 1
-    print "KMeans Model Fitting Complete - k=" + str(k)
-
-    # prune out clusters with less than 1000 members
-    print "Pruning out clusters with less than 1000 members"
-    model_labels = model.labels_
+    # prunt
+    print 'prunning down to ' + str(prune_down_to) + ' clusters'
+    keep_these_centers = set([sorted_counts_and_index_of_each_label[i][0] for i in xrange(prune_down_to)])
     pruned_centers = []
-    for i,center in enumerate(model.cluster_centers_):
-        if len([j for j in model_labels if i == j]) >= 1000:
+    for i, center in enumerate(model.cluster_centers_):
+        if i in keep_these_centers:
             pruned_centers.append(center)
     model.cluster_centers_ = np.array(pruned_centers)
 
     # get new labels
     pruned_labels = model.predict(features_set)
     number_of_unqiue_labels = len(set(pruned_labels.tolist()))
-    print "Pruned downed to " + str(number_of_unqiue_labels) + " clusters"
     print "Cluster member counts: "
     for i in xrange(number_of_unqiue_labels):
         print "  -- cluster " + str(i + 1) + ": " + str(pruned_labels.tolist().count(i))
