@@ -4,9 +4,10 @@ import pandas as pd
 import pickle
 import random
 import re
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
 import sys
 
 # Hack solution for import error associated with next import - don't have time to fix it though properly
@@ -32,7 +33,7 @@ def train_social_clustering_label_models(cluster_labels=set(['0','1','2','3'])):
                 # add features example to associated feature_set for the applicable social cluster label     
                 label_features_sets[split_label_features_line[1]].append([int(feature) for feature in split_label_features_line[2:]])
 
-    social_clustering_labeling_models = {label:RandomForestClassifier(n_estimators=300, max_depth=10, max_features=0.4, n_jobs=4) for label in cluster_labels}
+    social_clustering_labeling_models = {label:RandomForestClassifier(n_estimators=50, n_jobs=4) for label in cluster_labels}
     for social_cluster_label in cluster_labels:
         print "*** Social Labeling Model " + social_cluster_label + " ***"  
         social_label_model = social_clustering_labeling_models[social_cluster_label]
@@ -117,4 +118,5 @@ def predict_probabilities_of_social_labels(clickstream_part0_filename="/media/ch
     df_results.to_csv('data/processed/clickstream_social_label_predictions.csv')
 
 if __name__ == '__main__':
+    train_social_clustering_label_models()
     predict_probabilities_of_social_labels()
