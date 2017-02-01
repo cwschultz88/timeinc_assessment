@@ -1,0 +1,36 @@
+*** Social Labeling Model 1 ***
+Number of Positive Examples: 3336
+Number of Negative Examples: 27534
+fraction of Positive Examples: 0.108066083576
+Fitting Model
+Fitting Done, 10% validation stats
+accuracy: 0.887593132491
+saving model
+
+*** Social Labeling Model 0 ***
+Number of Positive Examples: 11573
+Number of Negative Examples: 19297
+fraction of Positive Examples: 0.374894719793
+Fitting Model
+Fitting Done, 10% validation stats
+accuracy: 0.625202461937
+saving model
+
+*** Social Labeling Model 3 ***
+Number of Positive Examples: 3824
+Number of Negative Examples: 27046
+fraction of Positive Examples: 0.123874311629
+Fitting Model
+Fitting Done, 10% validation stats
+accuracy: 0.875607385811
+saving model
+
+*** Social Labeling Model 2 ***
+Number of Positive Examples: 12137
+Number of Negative Examples: 18733
+fraction of Positive Examples: 0.393164885002
+Fitting Model
+Fitting Done, 10% validation stats
+accuracy: 0.610625202462
+saving model
+
