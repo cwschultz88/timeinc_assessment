@@ -1,7 +1,8 @@
 import csv
 import numpy as np
-import pickle
+import pandas as pd
 from operator import itemgetter
+import pickle
 import random
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.mixture import GaussianMixture
@@ -9,21 +10,18 @@ from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 import time
 
+
 def _get_twitter_features():
     '''
     Extracts twitter features for clustering
     '''
-    with open("data/processed/twitter_data_features.csv") as twitter_features_file:
-        csv_reader = csv.reader(twitter_features_file)
+    twitter_df = pd.read_csv("data/processed/twitter_data_features.csv")
+    user_info = twitter_df.ix[:, :3].values.tolist()
+    features_set = twitter_df.ix[:, 3:].values.tolist()
+    features_header = twitter_df.columns.values[3:]
 
-        features_header = next(csv_reader)[3:]  # ignore userid, screen_name, name as there are not features
+    return user_info, features_set, features_header
 
-        user_info, features_set = ([], [])
-        for data_line in csv_reader:
-            features_set.append([int(feature_str) for feature_str in data_line[3:]])
-            user_info.append([feature_str for feature_str in data_line[:3]])
-
-        return user_info, features_set, features_header
 
 def _print_out_feature_characteristics_of_cluster(features_set, features_header, labels):
     '''
@@ -42,6 +40,7 @@ def _print_out_feature_characteristics_of_cluster(features_set, features_header,
             str_clusters_feature_average_value += str(cluster_feature_means[j][i]) + "  "
         print "  --" + feature_name + " - " + str_clusters_feature_average_value
     print ""
+
 
 def compare_models():
     '''
@@ -84,6 +83,7 @@ def compare_models():
 
         _print_out_feature_characteristics_of_cluster(features_set, features_header, labels)
 
+
 def train_final_model(k=100, prune_down_to=4):
     '''
     trains final model using k-means algorithm
@@ -112,7 +112,7 @@ def train_final_model(k=100, prune_down_to=4):
     counts_and_index_of_each_label = [(i, count) for i, count in enumerate(counts_of_each_label)]
     sorted_counts_and_index_of_each_label = sorted(counts_and_index_of_each_label, key=itemgetter(1), reverse=True)
 
-    # prunt
+    # prune down
     print 'prunning down to ' + str(prune_down_to) + ' clusters'
     keep_these_centers = set([sorted_counts_and_index_of_each_label[i][0] for i in xrange(prune_down_to)])
     pruned_centers = []
@@ -141,5 +141,7 @@ def train_final_model(k=100, prune_down_to=4):
         for user, label in zip(user_info, pruned_labels):
             twitter_user_cluster_file.write(str(user[0] + ',' + str(label) + '\n'))
 
+
 if __name__ == '__main__':
+    # compare_models()
     train_final_model()
