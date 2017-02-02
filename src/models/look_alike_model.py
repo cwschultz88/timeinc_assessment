@@ -15,6 +15,23 @@ sys.path.insert(0, os.path.abspath(os.getcwd()))
 
 import src.data.raw.clickstream as clickstream_data
 
+def _load_social_labeling_models():
+    '''
+    Load Pickled Social labeling models
+    '''
+    social_labeling_model_files_directory_contents = os.listdir("models/look_alike_social_labeling_models")
+    model_filenames = [filename for filename in social_labeling_model_files_directory_contents if '.p' in filename]
+    if len(model_filenames) < 1:
+        print "No Model Files Found - run train_social_clustering_label_models() in this module first"
+        return
+    social_labeling_models = {}
+    for model_filename in model_filenames:
+        associated_social_label = model_filename.split('_')[2][:-2]
+        with open("models/look_alike_social_labeling_models/" + model_filename, 'rb') as model_file:
+            social_labeling_models[associated_social_label] = pickle.load(model_file)
+    return social_labeling_models
+
+
 def train_social_clustering_label_models(cluster_labels=set(['0','1','2','3'])):
     '''
     Trains a look alike model for each of cluster labels
@@ -70,7 +87,44 @@ def train_social_clustering_label_models(cluster_labels=set(['0','1','2','3'])):
             model_save_file.write(pickle.dumps(social_label_model))
         print ""
 
- 
+def create_gains_chart_info():
+    '''
+    Stores necessary info to create gain charts in:
+        data/processed/clickstream_gain_chart_info.csv
+
+    Assumes only social labels are 0,1,2,3 at the moment
+    '''
+    social_labeling_models = _load_social_labeling_models()
+    
+    df_social_labeled_data = pd.read_csv('data/processed/lookalike_model_labels_features.csv', skiprows=[0])
+
+    # convert labels into binarized labels (one off encoding?)
+    # e.x. convert 2 into [0,0,1,0]
+    labels = df_social_labeled_data.ix[:,1].tolist()
+    binarized_labels = []
+    for label in labels:
+        if label == 0:
+            binarized_labels.append([1,0,0,0])
+        elif label == 1:
+            binarized_labels.append([0,1,0,0])
+        elif label == 2:
+            binarized_labels.append([0,0,1,0])
+        elif label == 3:
+            binarized_labels.append([0,0,0,1])
+        else:
+            Exception("Only accepts labels 0-3 currently")
+    binarized_labels = np.array(binarized_labels)
+
+    features = df_social_labeled_data.ix[:,2:].as_matrix()
+    gain_chart_info = df_social_labeled_data.ix[:,0:1].as_matrix()
+    del(df_social_labeled_data)
+    gain_chart_info = np.append(gain_chart_info, binarized_labels, 1)
+    for i in xrange(4):
+        gain_chart_info = np.append(gain_chart_info, social_labeling_models[str(i)].predict_proba(features)[:,1:], 1)
+      
+    df_results = pd.DataFrame(data=gain_chart_info,index=gain_chart_info[:,0],columns=['clickstream_userid','S0','S1','S2','S3','Model Score S0', 'Model Score S1', 'Model Score S2', 'Model Score S3'])
+    df_results.to_csv('data/processed/clickstream_gain_chart_info.csv')
+    
 def predict_probabilities_of_social_labels(clickstream_part0_filename="/media/chris/EE06AB7406AB3C89/Documents and Settings/Chris/Downloads/UserSessions_2016_11_15_part0.csv", 
                                            clickstream_part1_filename="/media/chris/EE06AB7406AB3C89/Documents and Settings/Chris/Downloads/UserSessions_2016_11_15_part1.csv", 
                                            downsample_clickstream_to=100000):
@@ -80,19 +134,7 @@ def predict_probabilities_of_social_labels(clickstream_part0_filename="/media/ch
     saves results in:
         data/processed/clickstream_social_label_predictions.csv
     '''
-    # load models
-    social_labeling_model_files_directory_contents = os.listdir("models/look_alike_social_labeling_models")
-    model_filenames = [filename for filename in social_labeling_model_files_directory_contents if '.p' in filename]
-    social_labels = set()
-    if len(model_filenames) < 1:
-        print "No Model Files Found - run train_social_clustering_label_models() in this module first"
-        return
-    social_labeling_models = {}
-    for model_filename in model_filenames:
-        associated_social_label = model_filename.split('_')[2][:-2]
-        with open("models/look_alike_social_labeling_models/" + model_filename, 'rb') as model_file:
-            social_labeling_models[associated_social_label] = pickle.load(model_file)    
-            social_labels.add(associated_social_label)
+    social_labeling_models = _load_social_labeling_models()
 
     #select rows to load from clickstream_data
     number_of_clickstream_entries = sum(1 for line in open(clickstream_part0_filename)) #number of records in file
@@ -118,5 +160,6 @@ def predict_probabilities_of_social_labels(clickstream_part0_filename="/media/ch
     df_results.to_csv('data/processed/clickstream_social_label_predictions.csv')
 
 if __name__ == '__main__':
-    train_social_clustering_label_models()
-    predict_probabilities_of_social_labels()
+    # train_social_clustering_label_models()
+    # predict_probabilities_of_social_labels()
+    create_gains_chart_info()
