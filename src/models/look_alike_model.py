@@ -8,12 +8,6 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier,
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
-import sys
-
-# Hack solution for import error associated with next import - don't have time to fix it though properly
-sys.path.insert(0, os.path.abspath(os.getcwd()))
-
-import src.data.raw.clickstream as clickstream_data
 
 
 def _load_social_labeling_models():
